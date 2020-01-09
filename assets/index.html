@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        body {
+            color: #cacaca;
+            font-size: medium;
+            font-family: sans-serif;
+            background-color: #333333;
+        }
+        .content {
+            padding: 20px;
+        }
+        .page-title {
+            font-size: x-large;
+            padding-bottom: 10px;
+        }
+        .build-title {
+            font-size: large;
+        }
+        .build-container {
+            padding: 10px;
+            border-top: 1px solid #444444;
+        }
+        .build-container:nth-child(even) {
+            background-color: #303030;
+        }
+        .file-container {
+            padding: 5px;
+        }
+        .file-link {
+            color: cornflowerblue;
+            font-style: normal;
+            text-decoration: none;
+        }
+        .file-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div id="content" class="content"></div>
+</body>
+
+<script>
+    fetch("/data").then(r => r.json()).then(render);
+    
+    function render(data) {
+        let content = document.getElementById("content");
+        while (content.lastChild) {
+            content.removeChild(content.lastChild);
+        }
+
+        let title = create("div", "page-title");
+        title.innerText = `${data["name"]} Builds`;
+
+        let builds = create("div", "builds-container");
+        let limit = Math.min(10, data["builds"].length);
+        for (let i = 0; i < limit; i++) {
+            builds.appendChild(createBuild(data["builds"][i]));
+        }
+
+        content.appendChild(title);
+        content.appendChild(builds);
+    }
+    
+    function createBuild(build) {
+        let title = create("div", "build-title");
+        title.innerText = `Build #${build["number"]}`;
+        
+        let artifacts = create("div", "artifacts-container");
+        build["artifacts"].forEach(artifact => artifacts.appendChild(createArtifact(artifact)));
+        
+        let container = create("div", "build-container");
+        container.appendChild(title);
+        container.appendChild(artifacts);
+        
+        return container;
+    }
+    
+    function createArtifact(artifact) {
+        let link = create("a", "file-link");
+        link.href = artifact["relativePath"];
+        link.innerText = artifact["fileName"];
+        
+        let container = create("div", "file-container");
+        container.appendChild(link);
+        
+        return container;
+    }
+    
+    function create(type, style) {
+        let el = document.createElement(type);
+        el.classList.add(style);
+        return el;
+    }
+</script>
+
+</html>
