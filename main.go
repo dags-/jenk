@@ -21,14 +21,6 @@ var (
 
 func init() {
 	flag.Parse()
-
-	str := func(s string) *string {
-		return &s
-	}
-
-	server = str("https://ci.dags.me")
-	user = str("dags")
-	token = str("118b058ab56c8e1d1726e02c5b909d9c30")
 }
 
 func main() {
