@@ -51,7 +51,7 @@ func (m *Manager) ServeData(w http.ResponseWriter, r *http.Request) {
 		for aid, a := range b.Artifacts {
 			fid := getId(b.Timestamp, uint8(aid))
 			url := m.client.GetArtifactURL(b, a)
-			a.Path = m.address + "/file/" + fid
+			a.Path = "/file/" + fid
 			files[fid] = &Download{
 				URL:      url,
 				FileName: a.FileName,
