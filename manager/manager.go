@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
-	"github.com/dags-/downloads/jenkins"
-	"github.com/dags-/err"
 	"io"
 	"net/http"
 	"sync"
+
+	"github.com/dags-/jenk/err"
+	"github.com/dags-/jenk/jenkins"
 )
 
 type Manager struct {

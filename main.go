@@ -3,11 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/dags-/downloads/jenkins"
-	"github.com/dags-/downloads/manager"
-	"github.com/dags-/err"
 	"net"
 	"net/http"
+
+	"github.com/dags-/jenk/err"
+	"github.com/dags-/jenk/jenkins"
+	"github.com/dags-/jenk/manager"
 )
 
 var (

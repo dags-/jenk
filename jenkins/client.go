@@ -1,11 +1,12 @@
 package jenkins
 
 import (
-	"github.com/dags-/err"
 	"net/http"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/dags-/jenk/err"
 )
 
 const (
