@@ -21,6 +21,14 @@ var (
 
 func init() {
 	flag.Parse()
+
+	str := func(s string) *string {
+		return &s
+	}
+
+	server = str("https://ci.dags.me")
+	user = str("dags")
+	token = str("118b058ab56c8e1d1726e02c5b909d9c30")
 }
 
 func main() {
@@ -38,9 +46,16 @@ func main() {
 func fileHandler(dir http.Dir) func(http.ResponseWriter, *http.Request) {
 	handler := http.FileServer(dir)
 	return func(w http.ResponseWriter, r *http.Request) {
-		i := strings.LastIndex(r.URL.Path, "/")
-		if i > -1 {
-			r.URL.Path = r.URL.Path[:i]
+		if len(r.URL.Path) > 1 {
+			// disallow sub path
+			if strings.LastIndex(r.URL.Path, "/") > 0 {
+				http.NotFound(w, r)
+				return
+			}
+			// if not a file serve root
+			if !strings.ContainsRune(r.URL.Path, '.') {
+				r.URL.Path = ""
+			}
 		}
 		handler.ServeHTTP(w, r)
 	}
