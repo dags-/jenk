@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/dags-/jenk/err"
 	"github.com/dags-/jenk/jenkins"
@@ -12,11 +13,10 @@ import (
 )
 
 var (
-	port    = flag.Int("port", 8123, "Server port")
-	server  = flag.String("server", "", "Jenkins address")
-	project = flag.String("project", "", "Jenkins project name")
-	user    = flag.String("user", "", "Jenkins API user")
-	token   = flag.String("token", "", "Jenkins API token")
+	port   = flag.Int("port", 8123, "Server port")
+	server = flag.String("server", "", "Jenkins address")
+	user   = flag.String("user", "", "Jenkins API user")
+	token  = flag.String("token", "", "Jenkins API token")
 )
 
 func init() {
@@ -26,13 +26,23 @@ func init() {
 func main() {
 	l := listen(*port)
 	c := jenkins.NewClient(*server, *user, *token)
-	m := manager.New(c, "http://"+l.Addr().String(), *project)
-	fmt.Println(m.GetAddress())
+	m := manager.New(c)
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir("assets")))
+	mux.Handle("/", http.HandlerFunc(fileHandler("assets")))
 	mux.Handle("/file/", http.StripPrefix("/file/", http.HandlerFunc(m.ServeFile)))
 	mux.Handle("/data/", http.StripPrefix("/data/", http.HandlerFunc(m.ServeData)))
 	err.New(http.Serve(l, mux)).Panic()
+}
+
+func fileHandler(dir http.Dir) func(http.ResponseWriter, *http.Request) {
+	handler := http.FileServer(dir)
+	return func(w http.ResponseWriter, r *http.Request) {
+		i := strings.LastIndex(r.URL.Path, "/")
+		if i > -1 {
+			r.URL.Path = r.URL.Path[:i]
+		}
+		handler.ServeHTTP(w, r)
+	}
 }
 
 func listen(port int) net.Listener {

@@ -14,7 +14,6 @@ import (
 
 type Manager struct {
 	address   string
-	project   string
 	client    *jenkins.Client
 	lock      *sync.RWMutex
 	downloads map[string]*Download
@@ -25,22 +24,16 @@ type Download struct {
 	FileName string
 }
 
-func New(client *jenkins.Client, server, project string) *Manager {
+func New(client *jenkins.Client) *Manager {
 	return &Manager{
-		address:   server,
-		project:   project,
 		client:    client,
 		lock:      &sync.RWMutex{},
 		downloads: map[string]*Download{},
 	}
 }
 
-func (m *Manager) GetAddress() string {
-	return m.address + "/data"
-}
-
 func (m *Manager) ServeData(w http.ResponseWriter, r *http.Request) {
-	data, e := m.client.GetJobData(m.project)
+	data, e := m.client.GetJobData(r.URL.Path)
 	if data == nil || e != nil && e.Present() {
 		e.Warn()
 		return

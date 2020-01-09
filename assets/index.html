@@ -45,7 +45,7 @@
 </body>
 
 <script>
-    fetch("/data").then(r => r.json()).then(render);
+    fetch("/data/" + window.location.pathname).then(r => r.json()).then(render);
     
     function render(data) {
         let content = document.getElementById("content");
