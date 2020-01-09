@@ -24,6 +24,7 @@ func init() {
 }
 
 func main() {
+	fmt.Println("starting...")
 	l := listen(*port)
 	c := jenkins.NewClient(*server, *user, *token)
 	m := manager.New(c)
