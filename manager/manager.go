@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dags-/jenk/discord"
 	"github.com/dags-/jenk/err"
 	"github.com/dags-/jenk/jenkins"
 )
@@ -26,7 +27,8 @@ const (
 
 type Manager struct {
 	address   string
-	client    *jenkins.Client
+	jenkins   *jenkins.Client
+	discord   *discord.Client
 	lock      *sync.RWMutex
 	nextCheck time.Time
 	cache     map[string]*cache
@@ -44,9 +46,10 @@ type cache struct {
 	data    *jenkins.JobData
 }
 
-func New(client *jenkins.Client) *Manager {
+func New(jenkins *jenkins.Client, discord *discord.Client) *Manager {
 	return &Manager{
-		client:    client,
+		jenkins:   jenkins,
+		discord:   discord,
 		lock:      &sync.RWMutex{},
 		nextCheck: time.Now().Add(checkInterval),
 		cache:     map[string]*cache{},
@@ -54,108 +57,33 @@ func New(client *jenkins.Client) *Manager {
 	}
 }
 
-func (m *Manager) ServeData(w http.ResponseWriter, r *http.Request) {
-	// periodically check and expire download links
-	m.expireLinks()
-
-	// fetch cached data
-	m.lock.Lock()
-	data, ok := m.cache[r.URL.Path]
-	m.lock.Unlock()
-
-	// cached data exists but has expired
-	if ok && data.expires.Before(time.Now()) {
-		data = nil
-		ok = false
-		m.lock.Lock()
-		delete(m.cache, r.URL.Path)
-		m.lock.Unlock()
-	}
-
-	// cached value didn't exist or expired
-	if data == nil || !ok {
-		newData, e := m.getData(r.URL.Path)
-		if newData == nil || e.Present() {
-			e.Warn()
-			http.NotFound(w, r)
-			return
-		}
-
-		// cache the data
-		m.lock.Lock()
-		m.cache[r.URL.Path] = newData
-		m.lock.Unlock()
-
-		// set the data
-		data = newData
-	}
-
-	// send to client
-	e := err.Encode(w, data.data)
-	e.Warn()
+func (m *Manager) StartWatchdog() {
+	go m.expireLinks()
 }
 
-func (m *Manager) ServeFile(w http.ResponseWriter, r *http.Request) {
-	// periodically check and expire download links
-	m.expireLinks()
-
-	// get the download link
-	m.lock.Lock()
-	dl, ok := m.downloads[r.URL.Path]
-	m.lock.Unlock()
-
-	// link didn't exist or expired
-	if !ok {
-		http.NotFound(w, r)
-		return
-	}
-
-	// handle the download process & any errors
-	e := m.download(w, dl)
-	if e.Present() {
-		e.Warn()
-		return
-	}
-}
-
-func (m *Manager) expireLinks() {
-	now := time.Now()
-
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	if m.nextCheck.Before(now) {
-		for k, v := range m.downloads {
-			if v.expires.Before(now) {
-				delete(m.downloads, k)
-			}
-		}
-		m.nextCheck = now.Add(checkInterval)
-	}
-}
-
-func (m *Manager) getData(name string) (*cache, err.Error) {
-	data, e := m.client.GetJobData(name)
+func (m *Manager) getJob(name string) (*cache, err.Error) {
+	data, e := m.jenkins.GetJobData(name)
 	if data == nil || e.Present() {
 		return nil, e
 	}
 
 	now := time.Now()
 	downloadTimout := now.Add(downloadExpireTime)
+
+	m.lock.Lock()
 	for _, b := range data.Builds {
 		for aid, a := range b.Artifacts {
 			fid := getId(b.Timestamp, uint8(aid))
-			url := m.client.GetArtifactURL(b.Build, a)
+			url := m.jenkins.GetArtifactURL(b.Build, a)
 			a.Path = "/file/" + fid
-			m.lock.Lock()
 			m.downloads[fid] = &download{
 				url:      url,
 				fileName: a.FileName,
 				expires:  downloadTimout,
 			}
-			m.lock.Unlock()
 		}
 	}
+	m.lock.Unlock()
 
 	result := &cache{
 		expires: now.Add(dataExpireTime),
@@ -166,7 +94,7 @@ func (m *Manager) getData(name string) (*cache, err.Error) {
 }
 
 func (m *Manager) download(w http.ResponseWriter, dl *download) err.Error {
-	rs, e := m.client.Get(dl.url)
+	rs, e := m.jenkins.Get(dl.url)
 	if rs == nil || e.Present() {
 		return e
 	}
@@ -183,6 +111,21 @@ func (m *Manager) download(w http.ResponseWriter, dl *download) err.Error {
 	_, _ = io.Copy(w, rs.Body)
 
 	return err.Nil()
+}
+
+func (m *Manager) expireLinks() {
+	t := time.NewTicker(checkInterval)
+	defer t.Stop()
+
+	for now := range t.C {
+		m.lock.Lock()
+		for k, v := range m.downloads {
+			if v.expires.Before(now) {
+				delete(m.downloads, k)
+			}
+		}
+		m.lock.Unlock()
+	}
 }
 
 func getId(buildId int64, artifactId uint8) string {

@@ -1,59 +1,84 @@
 package main
 
 import (
-	"flag"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
-	"strings"
+	"os"
 
+	"github.com/dags-/jenk/discord"
 	"github.com/dags-/jenk/err"
 	"github.com/dags-/jenk/jenkins"
 	"github.com/dags-/jenk/manager"
 )
 
-var (
-	port   = flag.Int("port", 8123, "Server port")
-	user   = flag.String("user", "", "Jenkins API user")
-	token  = flag.String("token", "", "Jenkins API token")
-	server = flag.String("server", "", "Jenkins server address")
-)
-
-func init() {
-	if *user == "" {
-		flag.Parse()
-	}
+type Config struct {
+	Port                int      `json:"port"`
+	Domain              string   `json:"domain"`
+	JenkinsUser         string   `json:"jenkins_user"`
+	JenkinsToken        string   `json:"jenkins_token"`
+	JenkinsServer       string   `json:"jenkins_server"`
+	DiscordBotToken     string   `json:"discord_bot_token"`
+	DiscordClientId     string   `json:"discord_client_id"`
+	DiscordClientSecret string   `json:"discord_client_secret"`
+	DiscordRoles        []string `json:"discord_roles"`
 }
 
 func main() {
-	fmt.Println("starting...")
-	l := listen(*port)
-	c := jenkins.NewClient(*server, *user, *token)
-	m := manager.New(c)
+	c := loadConfig()
+	l := listen(c.Port)
+
+	j := jenkins.NewClient(&jenkins.Config{
+		Server: c.JenkinsServer,
+		User:   c.JenkinsUser,
+		Token:  c.JenkinsToken,
+	})
+
+	d := discord.New(&discord.Config{
+		Domain:       c.Domain,
+		BotToken:     c.DiscordBotToken,
+		ClientId:     c.DiscordClientId,
+		ClientSecret: c.DiscordClientSecret,
+		Roles:        c.DiscordRoles,
+	})
+
+	d.StartBot()
+
+	m := manager.New(j, d)
 	mux := http.NewServeMux()
-	mux.Handle("/", http.HandlerFunc(fileHandler("assets")))
+	mux.HandleFunc("/", m.ServeDir("assets"))
+	mux.HandleFunc("/auth", d.AuthHandler)
 	mux.Handle("/file/", http.StripPrefix("/file/", http.HandlerFunc(m.ServeFile)))
 	mux.Handle("/data/", http.StripPrefix("/data/", http.HandlerFunc(m.ServeData)))
-	e := err.New(http.Serve(l, mux))
-	e.Panic()
+	fmt.Println("starting server at", l.Addr().String())
+
+	err.New(http.Serve(l, mux)).Fatal()
 }
 
-func fileHandler(dir http.Dir) func(http.ResponseWriter, *http.Request) {
-	handler := http.FileServer(dir)
-	return func(w http.ResponseWriter, r *http.Request) {
-		if len(r.URL.Path) > 1 {
-			// disallow sub path
-			if strings.LastIndex(r.URL.Path, "/") > 0 {
-				http.NotFound(w, r)
-				return
-			}
-			// if not a file serve root
-			if !strings.ContainsRune(r.URL.Path, '.') {
-				r.URL.Path = ""
-			}
+func loadConfig() *Config {
+	var c Config
+	d, e0 := ioutil.ReadFile("config.json")
+	if e0 != nil {
+		d, e1 := json.MarshalIndent(c, "", "  ")
+		if e1 != nil {
+			panic(e1)
 		}
-		handler.ServeHTTP(w, r)
+
+		e3 := ioutil.WriteFile("config.json", d, os.ModePerm)
+		if e3 != nil {
+			panic(e3)
+		}
+
+		panic(e0)
 	}
+
+	e4 := json.Unmarshal(d, &c)
+	if e4 != nil {
+		panic(e4)
+	}
+	return &c
 }
 
 func listen(port int) net.Listener {

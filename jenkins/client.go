@@ -27,6 +27,12 @@ var (
 	}
 )
 
+type Config struct {
+	Server string
+	User   string
+	Token  string
+}
+
 type Client struct {
 	server string
 	user   string
@@ -48,11 +54,11 @@ type CommitData struct {
 	URL  string `json:"url"`
 }
 
-func NewClient(server, usr, token string) *Client {
+func NewClient(c *Config) *Client {
 	return &Client{
-		user:   usr,
-		token:  token,
-		server: sanitizeAddress(server),
+		user:   c.User,
+		token:  c.Token,
+		server: c.address(),
 	}
 }
 
@@ -160,16 +166,6 @@ func (c *Client) GetArtifactURL(build *Build, a *Artifact) string {
 	return build.URL + "/artifact/" + a.Path
 }
 
-func sanitizeAddress(address string) string {
-	if len(address) == 0 {
-		return address
-	}
-	if address[len(address)-1] != '/' {
-		address += "/"
-	}
-	return address
-}
-
 func (c *Client) getEndpoint(path ...string) string {
 	return c.server + strings.Join(path, "/") + suffix
 }
@@ -202,4 +198,15 @@ func (c *Client) getBuildAsync(meta *BuildMeta, ch chan *BuildData, wg *sync.Wai
 		Build:  build,
 		Commit: c.GetCommit(build),
 	}
+}
+
+func (c *Config) address() string {
+	address := c.Server
+	if len(address) == 0 {
+		return address
+	}
+	if c.Server[len(address)-1] != '/' {
+		address += "/"
+	}
+	return address
 }

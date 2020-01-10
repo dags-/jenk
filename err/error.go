@@ -75,6 +75,14 @@ func (e *Error) Panic() {
 	}
 }
 
+func (e Error) Log() {
+	e.Warn()
+}
+
+func (e Error) Fatal() {
+	e.Panic()
+}
+
 func (e *Error) unwrap() *Error {
 	er := e
 	for true {
