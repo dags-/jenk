@@ -13,15 +13,15 @@ import (
 	"github.com/dags-/jenk/jenkins"
 )
 
-var (
+const (
 	// frequency that download links should be checked for expiration
 	checkInterval = time.Hour * 6
 
 	// time after which cached data should expire
-	dataExpireTimeout = time.Minute * 10
+	dataExpireTime = time.Minute * 10
 
 	// time after which download links should expire
-	downloadExpireTimeout = time.Hour * 24
+	downloadExpireTime = time.Hour * 24 * 10
 )
 
 type Manager struct {
@@ -75,7 +75,7 @@ func (m *Manager) ServeData(w http.ResponseWriter, r *http.Request) {
 	// cached value didn't exist or expired
 	if data == nil || !ok {
 		newData, e := m.getData(r.URL.Path)
-		if newData == nil || e != nil && e.Present() {
+		if newData == nil || e.Present() {
 			e.Warn()
 			http.NotFound(w, r)
 			return
@@ -90,14 +90,9 @@ func (m *Manager) ServeData(w http.ResponseWriter, r *http.Request) {
 		data = newData
 	}
 
-	// not found if not data
-	if data == nil {
-		http.NotFound(w, r)
-		return
-	}
-
 	// send to client
-	err.Encode(w, data.data).Warn()
+	e := err.Encode(w, data.data)
+	e.Warn()
 }
 
 func (m *Manager) ServeFile(w http.ResponseWriter, r *http.Request) {
@@ -141,16 +136,16 @@ func (m *Manager) expireLinks() {
 
 func (m *Manager) getData(name string) (*cache, err.Error) {
 	data, e := m.client.GetJobData(name)
-	if data == nil || e != nil && e.Present() {
+	if data == nil || e.Present() {
 		return nil, e
 	}
 
 	now := time.Now()
-	downloadTimout := now.Add(downloadExpireTimeout)
+	downloadTimout := now.Add(downloadExpireTime)
 	for _, b := range data.Builds {
 		for aid, a := range b.Artifacts {
 			fid := getId(b.Timestamp, uint8(aid))
-			url := m.client.GetArtifactURL(b, a)
+			url := m.client.GetArtifactURL(b.Build, a)
 			a.Path = "/file/" + fid
 			m.lock.Lock()
 			m.downloads[fid] = &download{
@@ -163,7 +158,7 @@ func (m *Manager) getData(name string) (*cache, err.Error) {
 	}
 
 	result := &cache{
-		expires: now.Add(dataExpireTimeout),
+		expires: now.Add(dataExpireTime),
 		data:    data,
 	}
 
@@ -172,7 +167,7 @@ func (m *Manager) getData(name string) (*cache, err.Error) {
 
 func (m *Manager) download(w http.ResponseWriter, dl *download) err.Error {
 	rs, e := m.client.Get(dl.url)
-	if rs == nil || e != nil && e.Present() {
+	if rs == nil || e.Present() {
 		return e
 	}
 	defer err.Close(rs.Body)

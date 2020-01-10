@@ -3,7 +3,12 @@ package err
 import (
 	"io"
 	"net/http"
+	"time"
 )
+
+func init() {
+	http.DefaultClient.Timeout = time.Second * 3
+}
 
 func Request(method, url string, body io.Reader) (*http.Request, Error) {
 	r, e := http.NewRequest(method, url, body)

@@ -1,11 +1,5 @@
 package jenkins
 
-var emptyBuild = &Build{
-	Number:    -1,
-	Result:    "FAIL",
-	Artifacts: []*Artifact{},
-}
-
 type Job struct {
 	Builds []*BuildMeta `json:"builds"`
 }
@@ -32,4 +26,13 @@ type InternalBuild struct {
 type Artifact struct {
 	FileName string `json:"fileName"`
 	Path     string `json:"relativePath"`
+}
+
+type Git struct {
+	Revision  *GitRevision `json:"lastBuiltRevision"`
+	RemoteURL []string     `json:"remoteUrls"`
+}
+
+type GitRevision struct {
+	SHA1 string `json:"SHA1"`
 }

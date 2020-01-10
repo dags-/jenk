@@ -4,6 +4,7 @@ import "io"
 
 func Close(c io.Closer) {
 	if c != nil {
-		New(c.Close()).Warn()
+		e := New(c.Close())
+		e.Warn()
 	}
 }

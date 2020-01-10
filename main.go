@@ -14,13 +14,15 @@ import (
 
 var (
 	port   = flag.Int("port", 8123, "Server port")
-	server = flag.String("server", "", "Jenkins address")
 	user   = flag.String("user", "", "Jenkins API user")
 	token  = flag.String("token", "", "Jenkins API token")
+	server = flag.String("server", "", "Jenkins server address")
 )
 
 func init() {
-	flag.Parse()
+	if user == nil {
+		flag.Parse()
+	}
 }
 
 func main() {
@@ -32,7 +34,8 @@ func main() {
 	mux.Handle("/", http.HandlerFunc(fileHandler("assets")))
 	mux.Handle("/file/", http.StripPrefix("/file/", http.HandlerFunc(m.ServeFile)))
 	mux.Handle("/data/", http.StripPrefix("/data/", http.HandlerFunc(m.ServeData)))
-	err.New(http.Serve(l, mux)).Panic()
+	e := err.New(http.Serve(l, mux))
+	e.Panic()
 }
 
 func fileHandler(dir http.Dir) func(http.ResponseWriter, *http.Request) {
