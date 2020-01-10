@@ -20,7 +20,7 @@ var (
 )
 
 func init() {
-	if user == nil {
+	if *user == "" {
 		flag.Parse()
 	}
 }
