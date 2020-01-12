@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/dags-/jenk/discord"
 	"github.com/dags-/jenk/err"
@@ -56,9 +54,7 @@ func main() {
 	mux.Handle("/data/", http.StripPrefix("/data/", http.HandlerFunc(m.ServeData)))
 	fmt.Println("starting server at", l.Addr().String())
 
-	go serve(l, mux)
-
-	exit()
+	err.New(http.Serve(l, mux)).Fatal()
 }
 
 func loadConfig() *Config {
@@ -83,23 +79,6 @@ func loadConfig() *Config {
 		panic(e4)
 	}
 	return &c
-}
-
-func serve(l net.Listener, h http.Handler) {
-	fmt.Println("starting server at", l.Addr().String())
-	err.New(http.Serve(l, h)).Fatal()
-}
-
-func exit() {
-	s := bufio.NewScanner(os.Stdin)
-	for s.Scan() {
-		line := s.Text()
-		line = strings.TrimSpace(line)
-		line = strings.ToLower(line)
-		if line == "exit" || line == "stop" {
-			os.Exit(0)
-		}
-	}
 }
 
 func listen(port int) net.Listener {
