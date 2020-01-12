@@ -56,9 +56,9 @@ func main() {
 	mux.Handle("/data/", http.StripPrefix("/data/", http.HandlerFunc(m.ServeData)))
 	fmt.Println("starting server at", l.Addr().String())
 
-	go exit()
+	go serve(l, mux)
 
-	err.New(http.Serve(l, mux)).Fatal()
+	exit()
 }
 
 func loadConfig() *Config {
@@ -83,6 +83,11 @@ func loadConfig() *Config {
 		panic(e4)
 	}
 	return &c
+}
+
+func serve(l net.Listener, h http.Handler) {
+	fmt.Println("starting server at", l.Addr().String())
+	err.New(http.Serve(l, h)).Fatal()
 }
 
 func exit() {
