@@ -58,10 +58,12 @@ func (b *Bot) connect() {
 		b.refreshRoles()
 	})
 
-	e = s.StayConnectedUntilInterrupted(context.Background())
+	e = s.Connect(context.Background())
 	if e != nil {
 		panic(e)
 	}
+
+	fmt.Println("bot session started")
 }
 
 func (b *Bot) refreshRoles() {

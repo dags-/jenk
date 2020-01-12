@@ -38,7 +38,7 @@ func New(c *Config) *Client {
 }
 
 func (c *Client) StartBot() {
-	go c.bot.connect()
+	c.bot.connect()
 }
 
 func (c *Client) add(s *Session) {
