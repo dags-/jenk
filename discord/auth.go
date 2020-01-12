@@ -37,7 +37,7 @@ func (c *Client) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	state := r.FormValue("state")
-	session, ok := c.get(state)
+	session, ok := c.pop(state)
 	if !ok {
 		http.Error(w, invalidSession.Error(), http.StatusBadRequest)
 		return
@@ -56,6 +56,7 @@ func (c *Client) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !c.bot.hasAnyRole(user.ID, c.roles) {
 		http.Error(w, "You do not have access to this page :[", http.StatusUnauthorized)
+		return
 	}
 
 	http.SetCookie(w, &http.Cookie{
