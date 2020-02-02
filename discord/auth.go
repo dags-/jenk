@@ -57,7 +57,6 @@ func (c *Client) AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	name := getCookieName(session.path)
 	roles, ok := c.roles[name]
-	fmt.Println(session.path, roles)
 	if !ok {
 		http.Error(w, unauthorizedSession.Error(), http.StatusUnauthorized)
 		return
