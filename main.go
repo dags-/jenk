@@ -15,15 +15,15 @@ import (
 )
 
 type Config struct {
-	Port                int      `json:"port"`
-	Domain              string   `json:"domain"`
-	JenkinsUser         string   `json:"jenkins_user"`
-	JenkinsToken        string   `json:"jenkins_token"`
-	JenkinsServer       string   `json:"jenkins_server"`
-	DiscordBotToken     string   `json:"discord_bot_token"`
-	DiscordClientId     string   `json:"discord_client_id"`
-	DiscordClientSecret string   `json:"discord_client_secret"`
-	DiscordRoles        []string `json:"discord_roles"`
+	Port                int                 `json:"port"`
+	Domain              string              `json:"domain"`
+	JenkinsUser         string              `json:"jenkins_user"`
+	JenkinsToken        string              `json:"jenkins_token"`
+	JenkinsServer       string              `json:"jenkins_server"`
+	DiscordBotToken     string              `json:"discord_bot_token"`
+	DiscordClientId     string              `json:"discord_client_id"`
+	DiscordClientSecret string              `json:"discord_client_secret"`
+	Permissions         map[string][]string `json:"permissions"`
 }
 
 func main() {
@@ -41,7 +41,7 @@ func main() {
 		BotToken:     c.DiscordBotToken,
 		ClientId:     c.DiscordClientId,
 		ClientSecret: c.DiscordClientSecret,
-		Roles:        c.DiscordRoles,
+		Roles:        c.Permissions,
 	})
 
 	d.StartBot()

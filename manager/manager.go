@@ -38,6 +38,7 @@ type Manager struct {
 type download struct {
 	url      string
 	fileName string
+	project  string
 	expires  time.Time
 }
 
@@ -78,6 +79,7 @@ func (m *Manager) getJob(name string) (*cache, err.Error) {
 			a.Path = "/file/" + fid
 			m.downloads[fid] = &download{
 				url:      url,
+				project:  name,
 				fileName: a.FileName,
 				expires:  downloadTimout,
 			}

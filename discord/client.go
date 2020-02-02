@@ -9,18 +9,17 @@ type Config struct {
 	ClientId     string
 	ClientSecret string
 	BotToken     string
-	Roles        []string
+	Roles        map[string][]string
 }
 
 type Client struct {
-	roles        []string
 	domain       string
 	redirect     string
 	clientId     string
 	clientSecret string
 	bot          *Bot
 	lock         *sync.RWMutex
-	permissions  []string
+	roles        map[string][]string
 	sessions     map[string]*Session
 }
 

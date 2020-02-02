@@ -3,6 +3,7 @@ package discord
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Soumil07/authcord"
@@ -54,13 +55,21 @@ func (c *Client) AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !c.bot.hasAnyRole(user.ID, c.roles) {
+	name := getCookieName(session.path)
+	roles, ok := c.roles[name]
+	fmt.Println(session.path, roles)
+	if !ok {
+		http.Error(w, unauthorizedSession.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	if !c.bot.hasAnyRole(user.ID, roles) {
 		http.Error(w, "You do not have access to this page :[", http.StatusUnauthorized)
 		return
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:    "logged_in",
+		Name:    name,
 		Value:   "yes",
 		Path:    "/",
 		Expires: time.Now().Add(time.Hour * 24),
@@ -69,11 +78,26 @@ func (c *Client) AuthHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, c.domain+session.path, http.StatusFound)
 }
 
-func (c *Client) IsLoggedIn(r *http.Request) bool {
+func (c *Client) IsLoggedIn(r *http.Request, path string) bool {
+	name := strings.ToLower(getCookieName(path))
 	for _, c := range r.Cookies() {
-		if c.Name == "logged_in" {
+		if strings.ToLower(c.Name) == name {
 			return true
 		}
 	}
 	return false
+}
+
+func getCookieName(path string) string {
+	if len(path) == 0 {
+		return ""
+	}
+	if path[0] == '/' {
+		path = path[1:]
+	}
+	i := strings.Index(path, "/")
+	if i > 0 {
+		path = path[:i]
+	}
+	return path
 }

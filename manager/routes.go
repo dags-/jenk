@@ -11,27 +11,30 @@ import (
 func (m *Manager) ServeDir(dir http.Dir) func(http.ResponseWriter, *http.Request) {
 	handler := http.FileServer(dir)
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !m.discord.IsLoggedIn(r) {
+		if !m.discord.IsLoggedIn(r, r.URL.Path) {
 			m.discord.RequestLogin(w, r, r.URL.Path)
 			return
 		}
 
 		if len(r.URL.Path) > 1 {
 			// disallow sub path
-			if strings.LastIndex(r.URL.Path, "/") > 0 {
-				http.NotFound(w, r)
+			i := strings.LastIndex(r.URL.Path, "/")
+			if i > 0 {
+				r.URL.Path = r.URL.Path[i:]
+			} else if !strings.ContainsRune(r.URL.Path, '.') && !strings.HasSuffix(r.URL.Path, "/") {
+				r.URL.Path += "/"
+				http.Redirect(w, r, r.URL.Path, http.StatusPermanentRedirect)
 				return
 			}
-			// if not a file serve root
-			if !strings.ContainsRune(r.URL.Path, '.') {
-				r.URL.Path = ""
-			}
 		}
+
 		handler.ServeHTTP(w, r)
 	}
 }
 
 func (m *Manager) ServeData(w http.ResponseWriter, r *http.Request) {
+	r.URL.Path = strings.TrimSuffix(r.URL.Path, "/")
+
 	// fetch cached data
 	m.lock.Lock()
 	data, ok := m.cache[r.URL.Path]
@@ -69,15 +72,15 @@ func (m *Manager) ServeData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Manager) ServeFile(w http.ResponseWriter, r *http.Request) {
-	if !m.discord.IsLoggedIn(r) {
-		m.discord.RequestLogin(w, r, "/file/"+r.URL.Path)
-		return
-	}
-
 	// get the download link
 	m.lock.Lock()
 	dl, ok := m.downloads[r.URL.Path]
 	m.lock.Unlock()
+
+	if !m.discord.IsLoggedIn(r, dl.project) {
+		m.discord.RequestLogin(w, r, "/file/"+r.URL.Path)
+		return
+	}
 
 	// link didn't exist or expired
 	if !ok {
