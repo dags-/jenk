@@ -28,7 +28,7 @@ func (c *Client) RequestLogin(w http.ResponseWriter, r *http.Request, path strin
 		path:    path,
 	})
 
-	http.Redirect(w, r, session.AuthURL()+"&prompt=none", http.StatusFound)
+	http.Redirect(w, r, session.AuthURL(), http.StatusFound)
 }
 
 func (c *Client) AuthHandler(w http.ResponseWriter, r *http.Request) {
